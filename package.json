@@ -1,0 +1,34 @@
+{
+  "name": "notion-scheduler",
+  "version": "1.0.0",
+  "description": "Allows the creation of recurring tasks in Notion.",
+  "main": "build/index.js",
+  "repository": "https://github.com/kontheocharis/notion-scheduler",
+  "author": "Constantine Theocharis <cthe@mailbox.org>",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.26.0",
+    "@typescript-eslint/parser": "^4.26.0",
+    "eslint": "^7.27.0",
+    "eslint-config-prettier": "^8.3.0",
+    "typescript": "^4.3.2"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "tsc && node build/index.js"
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "trailingComma": "all"
+  },
+  "dependencies": {
+    "@notionhq/client": "^0.1.8",
+    "class-transformer": "^0.4.0",
+    "class-validator": "^0.13.1",
+    "fp-ts": "^2.10.5",
+    "winston": "^3.3.3",
+    "yaml": "^1.10.2"
+  }
+}
