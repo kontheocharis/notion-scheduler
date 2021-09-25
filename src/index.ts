@@ -1,39 +1,36 @@
-import { Client } from "@notionhq/client";
-import { IsBoolean, IsEnum, IsString } from "class-validator";
-import { log, LogLevel, initLogger } from "./log";
-import { taskEither as TE } from "fp-ts";
-import { readConfig } from "./config";
-import { pipe } from "fp-ts/lib/function";
+import { LogLevel, initLogger } from './log';
+import { z } from 'zod';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import { readConfig } from './config';
 
-class Settings {
-  @IsString()
-  configPath!: string;
+export const Settings = z.object({
+  configPath: z.string(),
+  logLevel: LogLevel.default('warn'),
+  dryRun: z.boolean().default(false),
+  deleteRescheduled: z.boolean().default(false),
+  append: z.boolean().default(false),
+});
 
-  @IsEnum(LogLevel)
-  logLevel: LogLevel = LogLevel.Warn;
+export type Settings = z.infer<typeof Settings>;
 
-  @IsBoolean()
-  dryRun: boolean = false;
-
-  @IsBoolean()
-  deleteRescheduled: boolean = false;
-
-  @IsBoolean()
-  append: boolean = false;
-}
-
-const main = () => {
+const main = async () => {
   initLogger();
-  const configPath = process.argv.slice(2)[0]!;
-  pipe(
-    readConfig(configPath),
-    TE.map((config) => {
-      console.log(config);
-    }),
-    TE.mapLeft((err) => {
-      log.error(err);
-    }),
-  )();
+
+  const settingsRaw = yargs(hideBin(process.argv)).options({
+    configPath: { type: 'string', required: true },
+    logLevel: { type: 'string' },
+    dryRun: { type: 'string' },
+    deleteRescheduled: { type: 'boolean' },
+    append: { type: 'boolean' },
+  }).argv;
+
+  const settings = await Settings.parseAsync(settingsRaw);
+  const config = await readConfig(settings.configPath);
+
+  console.log(config);
+
+  // console.log(settings);
 };
 
-main();
+void main();

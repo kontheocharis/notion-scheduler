@@ -1,133 +1,32 @@
-import {
-  IsOptional,
-  IsString,
-  validate,
-  ValidationError,
-} from "class-validator";
-import { taskEither as TE, either as E } from "fp-ts";
-import { pipe } from "fp-ts/lib/function";
-import yaml from "yaml";
-import fs from "fs/promises";
-import { plainToClass } from "class-transformer";
-import { assert } from "./utils";
+import fs from 'fs/promises';
+import { z } from 'zod';
+import yaml from 'yaml';
 
-const stringifyConfigValidationErrors = (errors: ValidationError[]): string => {
-  assert(errors.length !== 0);
-  const message = "Could not validate config file.";
-  const details = errors
-    .map((err) => stringifyValidationError(err, 1))
-    .join("\n");
-  return [message, details].join("\n");
-};
+export const readConfig = async (configPath: string): Promise<Config> => {
+  const contents = await fs.readFile(configPath).catch((err: unknown) => {
+    throw new Error(`Cannot read config file: ${String(err)}`);
+  });
 
-const stringifyValidationError = (
-  error: ValidationError,
-  indent: number = 0,
-): string => {
-  const basic = Object.values(error.constraints || {})
-    .map((err) => ["  ".repeat(indent), "- ", err].join(""))
-    .join("\n");
-  if (error.children && error.children.length !== 0) {
-    const children = error.children
-      .map((child) => stringifyValidationError(child, indent + 1))
-      .join("\n");
-    return [basic, children].join("\n");
-  } else {
-    return basic;
-  }
-};
+  const contentsParsed = yaml.parse(contents.toString('utf8')) as unknown;
 
-export const readConfig = (configPath: string): TE.TaskEither<string, Config> =>
-  pipe(
-    TE.tryCatch(
-      () => fs.readFile(configPath),
-      () => "Could not read config file.",
-    ),
-    TE.chain((contents) =>
-      TE.fromEither(
-        E.tryCatch(
-          () =>
-            plainToClass(Config, yaml.parse(contents.toString("utf8"))) ||
-            new Config(),
-          () => "Could not parse config file",
-        ),
-      ),
-    ),
-    TE.chainFirst((config) =>
-      pipe(
-        TE.fromTask<string, ValidationError[]>(() =>
-          validate(config, {
-            whitelist: true,
-            forbidNonWhitelisted: true,
-            forbidUnknownValues: true,
-          }),
-        ),
-        TE.chain((errors) => {
-          if (errors.length === 0) {
-            return TE.right({});
-          } else {
-            return TE.left(stringifyConfigValidationErrors(errors));
-          }
-        }),
-      ),
-    ),
+  const config = await Config.parseAsync(contentsParsed).catch(
+    (err: unknown) => {
+      throw new Error(`Cannot parse config file: ${String(err)}`);
+    },
   );
+  return config;
+};
 
-export class Config {
-  @IsString()
-  tasksDatabaseId!: string;
+export const Config = z.object({
+  tasksDatabaseId: z.string(),
+  scheduledDatabaseId: z.string(),
+  token: z.string(),
 
-  @IsString()
-  scheduledDatabaseId!: string;
+  extraPropertiesToSync: z.string().array().default([]),
+  titleProperty: z.string().default('Name'),
+  recurrenceProperty: z.string().default('Recurrence'),
+  reminderProperty: z.string().default('Reminder'),
+  dateFieldProperty: z.string().default('Date field'),
+});
 
-  @IsString()
-  token!: string;
-
-  @IsString({ each: true })
-  extraPropertiesToSync!: string[];
-
-  @IsString()
-  tagsProperty!: string;
-
-  @IsString()
-  scheduledTag!: string;
-
-  @IsString()
-  rescheduledTag!: string;
-
-  @IsString()
-  @IsOptional()
-  statusProperty?: string;
-
-  @IsString()
-  @IsOptional()
-  statusBeforeToday?: string;
-
-  @IsString()
-  @IsOptional()
-  statusAfterToday?: string;
-
-  @IsString()
-  titleProperty: string = "Name";
-
-  @IsString()
-  startDateProperty: string = "Start date";
-
-  @IsString()
-  recurrenceProperty: string = "Recurrence";
-
-  @IsString()
-  notOnProperty: string = "Not on";
-
-  @IsString()
-  includeTimeProperty: string = "Include time";
-
-  @IsString()
-  durationProperty: string = "Duration";
-
-  @IsString()
-  reminderProperty: string = "Reminder";
-
-  @IsString()
-  dateFieldProperty: string = "Date field";
-}
+export type Config = z.infer<typeof Config>;

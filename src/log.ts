@@ -1,12 +1,9 @@
-import { unexpectedCase, unreachableCase } from "./utils";
-import winston from "winston";
+import winston from 'winston';
+import { z } from 'zod';
+import { unexpectedCase } from './utils';
 
-export enum LogLevel {
-  Info = "info",
-  Warn = "warn",
-  Error = "error",
-  Debug = "debug",
-}
+export const LogLevel = z.enum(['info', 'warn', 'error', 'debug']);
+export type LogLevel = z.infer<typeof LogLevel>;
 
 export const initLogger = (): void => {
   winston.add(
@@ -17,37 +14,15 @@ export const initLogger = (): void => {
 };
 
 export const setLogLevel = (level: LogLevel): void => {
-  switch (level) {
-    case LogLevel.Info:
-      winston.configure({ level: "info" });
-      break;
-    case LogLevel.Warn:
-      winston.configure({ level: "warn" });
-      break;
-    case LogLevel.Error:
-      winston.configure({ level: "error" });
-      break;
-    case LogLevel.Debug:
-      winston.configure({ level: "debug" });
-      break;
-    default:
-      return unreachableCase(level);
-  }
+  winston.configure({ level });
 };
 
 export const logLevel = () => {
-  switch (winston.level) {
-    case "info":
-      return LogLevel.Info;
-    case "warn":
-      return LogLevel.Warn;
-    case "error":
-      return LogLevel.Error;
-    case "debug":
-      return LogLevel.Debug;
-    default:
-      return unexpectedCase(winston.level);
+  const parsedLevel = LogLevel.safeParse(winston.level);
+  if (!parsedLevel.success) {
+    return unexpectedCase(winston.level);
   }
+  return parsedLevel.data;
 };
 
 export const log = {
