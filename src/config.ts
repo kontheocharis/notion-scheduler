@@ -19,12 +19,16 @@ export const readConfig = async (configPath: string): Promise<Config> => {
 
 export const Config = z.object({
   tasksDatabaseId: z.string(),
-  scheduledDatabaseId: z.string(),
+  scheduleDatabaseId: z.string(),
   token: z.string(),
 
   extraPropertiesToSync: z.string().array().default([]),
-  titleProperty: z.string().default('Name'),
+
+  titleInputProperty: z.string().default('Name'),
+  titleOutputProperty: z.string().default('Name'),
+
   recurrenceProperty: z.string().default('Recurrence'),
+  durationProperty: z.string().default('Duration'),
   reminderProperty: z.string().default('Reminder'),
   dateFieldProperty: z.string().default('Date field'),
 });

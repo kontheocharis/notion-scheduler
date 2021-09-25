@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^0.3.2",
+    "parse-duration": "^1.0.0",
     "rrule": "^2.6.8",
     "winston": "^3.3.3",
     "yaml": "^1.10.2",
