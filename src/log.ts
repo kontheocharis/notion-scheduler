@@ -14,7 +14,7 @@ export const initLogger = (): void => {
 };
 
 export const setLogLevel = (level: LogLevel): void => {
-  winston.configure({ level });
+  winston.level = level;
 };
 
 export const logLevel = () => {

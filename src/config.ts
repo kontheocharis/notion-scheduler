@@ -28,7 +28,7 @@ export const Config = z.object({
   titleOutputProperty: z.string().default('Name'),
 
   recurrenceProperty: z.string().default('Recurrence'),
-  durationProperty: z.string().default('Duration'),
+  timeProperty: z.string().default('Time'),
   reminderProperty: z.string().default('Reminder'),
   dateFieldProperty: z.string().default('Date field'),
 });

@@ -1,4 +1,4 @@
-import { LogLevel, initLogger, log } from './log';
+import { LogLevel, initLogger, log, setLogLevel } from './log';
 import { z } from 'zod';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
@@ -9,19 +9,19 @@ import {
   PropertyValueMap,
 } from '@notionhq/client/build/src/api-endpoints';
 import {
+  Date as NotionDate,
   Page,
   PropertyValue,
   RichText,
 } from '@notionhq/client/build/src/api-types';
 import { rrulestr } from 'rrule';
-import parseDuration from 'parse-duration';
+import * as dateFns from 'date-fns';
+import { inspect } from 'util';
 
 export const Settings = z.object({
   configPath: z.string(),
   logLevel: LogLevel.default('warn'),
   dryRun: z.boolean().default(false),
-  deleteRescheduled: z.boolean().default(false),
-  append: z.boolean().default(false),
 });
 
 export type Settings = z.infer<typeof Settings>;
@@ -30,7 +30,7 @@ interface ScheduleEntry {
   title: RichText[];
   recurrence: string;
   reminder: string;
-  duration: string;
+  time: NotionDate | null;
   dateField: string;
   extraProperties: InputPropertyValueMap;
 }
@@ -68,10 +68,10 @@ const parseScheduleEntry = (page: Page, config: Config): ScheduleEntry => {
     config.recurrenceProperty,
     'rich_text',
   );
-  const duration = parseScheduleEntryProp(
+  const time = parseScheduleEntryProp(
     page.properties,
-    config.durationProperty,
-    'rich_text',
+    config.timeProperty,
+    'date',
   );
   const reminder = parseScheduleEntryProp(
     page.properties,
@@ -108,11 +108,20 @@ const parseScheduleEntry = (page: Page, config: Config): ScheduleEntry => {
   return {
     title: title.title,
     recurrence: richToPlain(recurrence.rich_text),
-    duration: richToPlain(duration.rich_text),
+    time: time.date,
     reminder: richToPlain(reminder.rich_text),
     dateField: richToPlain(dateField.rich_text),
     extraProperties,
   };
+};
+
+const combineDateAndTime = (date: Date, time: Date): Date => {
+  return dateFns.set(date, {
+    hours: dateFns.getHours(time),
+    minutes: dateFns.getMinutes(time),
+    seconds: dateFns.getSeconds(time),
+    milliseconds: dateFns.getMilliseconds(time),
+  });
 };
 
 const main = async () => {
@@ -121,12 +130,13 @@ const main = async () => {
   const settingsRaw = yargs(hideBin(process.argv)).options({
     configPath: { type: 'string', required: true },
     logLevel: { type: 'string' },
-    dryRun: { type: 'string' },
-    deleteRescheduled: { type: 'boolean' },
-    append: { type: 'boolean' },
+    dryRun: { type: 'boolean' },
   }).argv;
 
   const settings = await Settings.parseAsync(settingsRaw);
+
+  setLogLevel(settings.logLevel);
+
   const config = await readConfig(settings.configPath);
 
   const notion = new Client({ auth: config.token });
@@ -146,43 +156,46 @@ const main = async () => {
       );
     }
 
-    const includeEndTime = entry.duration.trim().length === 0;
-    const durationMs = includeEndTime ? parseDuration(entry.duration) : 0;
-    if (durationMs === null) {
-      throw new Error(
-        `Got invalid duration for entry '${richToPlain(entry.title)}'`,
-      );
-    }
+    return recurrences.map((recurrence): InputPropertyValueMap => {
+      let start = recurrence;
+      let end: Date | null = null;
 
-    return recurrences.map(
-      (recurrence): InputPropertyValueMap => ({
+      if (entry.time !== null) {
+        start = combineDateAndTime(recurrence, new Date(entry.time.start));
+        if (typeof entry.time.end !== "undefined") {
+          end = combineDateAndTime(recurrence, new Date(entry.time.end));
+        }
+      }
+
+      return {
         [config.titleOutputProperty]: { type: 'title', title: entry.title },
         [entry.dateField]: {
           type: 'date',
           date: {
-            start: recurrence.toISOString(),
-            end: includeEndTime
-              ? new Date(recurrence.getTime() + durationMs).toISOString()
-              : undefined,
+            start: start.toISOString(),
+            end: end?.toISOString(),
           },
         },
         ...entry.extraProperties,
-      }),
-    );
+      };
+    });
   });
+
+  log.debug(inspect(taskData, { depth: null }));
 
   log.info(
     `Will create ${taskData.length} tasks from ${scheduleEntries.length} schedule entries.`,
   );
 
-  const taskRequests = taskData.map((task) => {
-    return notion.pages.create({
-      parent: { database_id: config.tasksDatabaseId },
-      properties: task,
+  if (!settings.dryRun) {
+    const taskRequests = taskData.map((task) => {
+      return notion.pages.create({
+        parent: { database_id: config.tasksDatabaseId },
+        properties: task,
+      });
     });
-  });
-
-  await Promise.all(taskRequests);
+    await Promise.all(taskRequests);
+  }
 
   log.info('Tasks created.');
 };
