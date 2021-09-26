@@ -8,6 +8,7 @@
   "license": "MIT",
   "private": false,
   "devDependencies": {
+    "@types/lodash": "^4.14.174",
     "@types/node": "^16.9.6",
     "@types/yargs": "^17.0.3",
     "@typescript-eslint/eslint-plugin": "^4.31.2",
@@ -32,6 +33,7 @@
   "dependencies": {
     "@notionhq/client": "^0.3.2",
     "date-fns": "^2.24.0",
+    "lodash": "^4.17.21",
     "rrule": "^2.6.8",
     "winston": "^3.3.3",
     "yaml": "^1.10.2",

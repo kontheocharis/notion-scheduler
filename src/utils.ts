@@ -56,3 +56,7 @@ export const fallbackUndefined = <T>(x: T | undefined, fallback: T): T => {
   }
   return x;
 };
+
+export const expr = <Ret>(f: () => Ret): Ret => {
+  return f();
+};
