@@ -1,5 +1,6 @@
 import { InputPropertyValueMap } from '@notionhq/client/build/src/api-endpoints';
 import {
+  Block,
   Date as NotionDate,
   InputPropertyValue,
   Page,
@@ -13,8 +14,8 @@ import {
 } from './prop-utils';
 
 export interface ScheduleEntry {
-  title: RichText[];
   id: string;
+  title: RichText[];
   recurrence: string;
   notOn: string;
   reminder: string;

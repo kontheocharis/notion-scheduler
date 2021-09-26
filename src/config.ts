@@ -28,6 +28,7 @@ export const Config = z.object({
   titleInputProperty: z.string().default('Name'),
   titleOutputProperty: z.string().default('Name'),
 
+  activeInputProperty: z.string().default('Active'),
   doneOutputProperty: z.string().default('Done'),
   recurrenceProperty: z.string().default('Recurrence'),
   notOnProperty: z.string().default('Not on'),

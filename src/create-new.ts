@@ -1,5 +1,5 @@
 import { Client as NotionClient } from '@notionhq/client';
-import { InputPropertyValueMap } from '@notionhq/client/build/src/api-endpoints';
+import { PagesCreateParameters } from '@notionhq/client/build/src/api-endpoints';
 import { rrulestr } from 'rrule';
 import { inspect } from 'util';
 import { Settings } from '.';
@@ -12,7 +12,7 @@ import { combineDateAndTime, expr } from './utils';
 import * as dateFns from 'date-fns';
 import { format } from 'date-fns-tz';
 
-const ISO_FMT = "yyyy-MM-dd'T'hh:mmXXX";
+const ISO_FMT = "yyyy-MM-dd'T'HH:mmXXX";
 
 export const createNewTaskEntries = async (
   notion: NotionClient,
@@ -23,11 +23,26 @@ export const createNewTaskEntries = async (
     notion.databases.query({
       start_cursor: cursor,
       database_id: config.scheduleDatabaseId,
+      filter: {
+        property: config.activeInputProperty,
+        checkbox: { equals: true },
+      },
     }),
   );
 
-  const scheduleEntries = scheduleData.map((page) =>
-    parseScheduleEntry(page, config),
+  const scheduleEntries = await Promise.all(
+    scheduleData.map(async (page) => {
+      const scheduleEntry = parseScheduleEntry(page, config);
+
+      // Fetch children of page
+      const children = await queryAll((cursor) =>
+        notion.blocks.children.list({
+          start_cursor: cursor,
+          block_id: page.id,
+        }),
+      );
+      return { children, ...scheduleEntry };
+    }),
   );
 
   const taskData = scheduleEntries.flatMap((entry) => {
@@ -60,45 +75,57 @@ export const createNewTaskEntries = async (
         }
         return true;
       })
-      .map((recurrence): InputPropertyValueMap => {
-        let start = recurrence;
-        let end: Date | null = null;
+      .map(
+        (
+          recurrence,
+        ): Pick<PagesCreateParameters, 'properties' | 'children'> => {
+          let start = recurrence;
+          let end: Date | null = null;
 
-        if (entry.time !== null) {
-          start = combineDateAndTime(recurrence, new Date(entry.time.start));
-          if (typeof entry.time.end !== 'undefined') {
-            end = combineDateAndTime(recurrence, new Date(entry.time.end));
+          if (entry.time !== null) {
+            start = combineDateAndTime(recurrence, new Date(entry.time.start));
+            if (typeof entry.time.end !== 'undefined') {
+              end = combineDateAndTime(recurrence, new Date(entry.time.end));
+            }
           }
-        }
 
-        return {
-          [config.titleOutputProperty]: { type: 'title', title: entry.title },
-          [entry.dateField]: {
-            type: 'date',
-            date: {
-              start: format(start, ISO_FMT, { timeZone: config.timeZone }),
-              end:
-                end === null
-                  ? undefined
-                  : format(end, ISO_FMT, { timeZone: config.timeZone }),
+          return {
+            properties: {
+              [config.titleOutputProperty]: {
+                type: 'title',
+                title: entry.title,
+              },
+              [entry.dateField]: {
+                type: 'date',
+                date: {
+                  start: format(start, ISO_FMT, { timeZone: config.timeZone }),
+                  end:
+                    end === null
+                      ? undefined
+                      : format(end, ISO_FMT, { timeZone: config.timeZone }),
+                },
+              },
+              [config.recurrenceInfoProperty]: {
+                type: 'rich_text',
+                rich_text: [
+                  { type: 'text', text: { content: `ID ${entry.id}` } },
+                ],
+              },
+              [config.doneOutputProperty]: {
+                type: 'checkbox',
+                checkbox: expr(() => {
+                  if (end !== null) {
+                    return dateFns.isBefore(end, new Date());
+                  }
+                  return dateFns.isBefore(start, new Date());
+                }),
+              },
+              ...entry.extraProperties,
             },
-          },
-          [config.recurrenceInfoProperty]: {
-            type: 'rich_text',
-            rich_text: [{ type: 'text', text: { content: `ID ${entry.id}` } }],
-          },
-          [config.doneOutputProperty]: {
-            type: 'checkbox',
-            checkbox: expr(() => {
-              if (end !== null) {
-                return dateFns.isBefore(end, new Date());
-              }
-              return dateFns.isBefore(start, new Date());
-            }),
-          },
-          ...entry.extraProperties,
-        };
-      });
+            children: entry.children,
+          };
+        },
+      );
   });
 
   log.debug(inspect(taskData, { depth: null }));
@@ -111,7 +138,7 @@ export const createNewTaskEntries = async (
     const taskRequests = taskData.map((task) => {
       return notion.pages.create({
         parent: { database_id: config.tasksDatabaseId },
-        properties: task,
+        ...task,
       });
     });
     await Promise.all(taskRequests);
