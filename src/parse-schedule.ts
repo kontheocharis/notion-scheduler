@@ -1,6 +1,5 @@
 import { InputPropertyValueMap } from '@notionhq/client/build/src/api-endpoints';
 import {
-  Block,
   Date as NotionDate,
   InputPropertyValue,
   Page,
