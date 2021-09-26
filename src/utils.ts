@@ -1,4 +1,5 @@
 import { strict } from 'assert';
+import * as dateFns from 'date-fns';
 import { inspect } from 'util';
 
 export function assert(
@@ -59,4 +60,13 @@ export const fallbackUndefined = <T>(x: T | undefined, fallback: T): T => {
 
 export const expr = <Ret>(f: () => Ret): Ret => {
   return f();
+};
+
+export const combineDateAndTime = (date: Date, time: Date): Date => {
+  return dateFns.set(date, {
+    hours: dateFns.getHours(time),
+    minutes: dateFns.getMinutes(time),
+    seconds: dateFns.getSeconds(time),
+    milliseconds: dateFns.getMilliseconds(time),
+  });
 };

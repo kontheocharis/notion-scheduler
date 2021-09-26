@@ -31,6 +31,8 @@ export const Config = z.object({
   timeProperty: z.string().default('Time'),
   reminderProperty: z.string().default('Reminder'),
   dateFieldProperty: z.string().default('Date field'),
+
+  recurrenceInfoProperty: z.string().default('Recurrence info'),
 });
 
 export type Config = z.infer<typeof Config>;
