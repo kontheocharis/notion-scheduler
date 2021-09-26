@@ -21,12 +21,14 @@ export const Config = z.object({
   tasksDatabaseId: z.string(),
   scheduleDatabaseId: z.string(),
   token: z.string(),
+  timeZone: z.string(),
 
   extraPropertiesToSync: z.string().array().default([]),
 
   titleInputProperty: z.string().default('Name'),
   titleOutputProperty: z.string().default('Name'),
 
+  doneOutputProperty: z.string().default('Done'),
   recurrenceProperty: z.string().default('Recurrence'),
   notOnProperty: z.string().default('Not on'),
   timeProperty: z.string().default('Time'),

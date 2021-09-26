@@ -33,6 +33,7 @@
   "dependencies": {
     "@notionhq/client": "^0.3.2",
     "date-fns": "^2.24.0",
+    "date-fns-tz": "^1.1.6",
     "lodash": "^4.17.21",
     "rrule": "^2.6.8",
     "winston": "^3.3.3",

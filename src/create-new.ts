@@ -10,6 +10,9 @@ import { richToPlain } from './prop-utils';
 import { queryAll } from './querying';
 import { combineDateAndTime, expr } from './utils';
 import * as dateFns from 'date-fns';
+import { format } from 'date-fns-tz';
+
+const ISO_FMT = "yyyy-MM-dd'T'hh:mmXXX";
 
 export const createNewTaskEntries = async (
   notion: NotionClient,
@@ -73,13 +76,25 @@ export const createNewTaskEntries = async (
           [entry.dateField]: {
             type: 'date',
             date: {
-              start: start.toISOString(),
-              end: end?.toISOString(),
+              start: format(start, ISO_FMT, { timeZone: config.timeZone }),
+              end:
+                end === null
+                  ? undefined
+                  : format(end, ISO_FMT, { timeZone: config.timeZone }),
             },
           },
           [config.recurrenceInfoProperty]: {
             type: 'rich_text',
             rich_text: [{ type: 'text', text: { content: `ID ${entry.id}` } }],
+          },
+          [config.doneOutputProperty]: {
+            type: 'checkbox',
+            checkbox: expr(() => {
+              if (end !== null) {
+                return dateFns.isBefore(end, new Date());
+              }
+              return dateFns.isBefore(start, new Date());
+            }),
           },
           ...entry.extraProperties,
         };
