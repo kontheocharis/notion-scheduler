@@ -8,7 +8,8 @@ import { log } from './log';
 import { parseScheduleEntry } from './parse-schedule';
 import { richToPlain } from './prop-utils';
 import { queryAll } from './querying';
-import { combineDateAndTime } from './utils';
+import { combineDateAndTime, expr } from './utils';
+import * as dateFns from 'date-fns';
 
 export const createNewTaskEntries = async (
   notion: NotionClient,
@@ -33,34 +34,56 @@ export const createNewTaskEntries = async (
         `Got invalid recurrence for entry '${richToPlain(entry.title)}'`,
       );
     }
-
-    return recurrences.map((recurrence): InputPropertyValueMap => {
-      let start = recurrence;
-      let end: Date | null = null;
-
-      if (entry.time !== null) {
-        start = combineDateAndTime(recurrence, new Date(entry.time.start));
-        if (typeof entry.time.end !== 'undefined') {
-          end = combineDateAndTime(recurrence, new Date(entry.time.end));
-        }
+    const notOn = expr(() => {
+      if (entry.notOn.trim() === '') {
+        return [];
       }
-
-      return {
-        [config.titleOutputProperty]: { type: 'title', title: entry.title },
-        [entry.dateField]: {
-          type: 'date',
-          date: {
-            start: start.toISOString(),
-            end: end?.toISOString(),
-          },
-        },
-        [config.recurrenceInfoProperty]: {
-          type: 'rich_text',
-          rich_text: [{ type: 'text', text: { content: `ID ${entry.id}` } }],
-        },
-        ...entry.extraProperties,
-      };
+      return rrulestr(entry.notOn).all();
     });
+
+    return recurrences
+      .filter((recurrence) => {
+        // Filter out dates that are specified in notOn.
+        for (const notOnDate of notOn) {
+          if (
+            dateFns.isEqual(
+              // Zero out the times, we just care about dates.
+              combineDateAndTime(recurrence, new Date(0)),
+              combineDateAndTime(notOnDate, new Date(0)),
+            )
+          ) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map((recurrence): InputPropertyValueMap => {
+        let start = recurrence;
+        let end: Date | null = null;
+
+        if (entry.time !== null) {
+          start = combineDateAndTime(recurrence, new Date(entry.time.start));
+          if (typeof entry.time.end !== 'undefined') {
+            end = combineDateAndTime(recurrence, new Date(entry.time.end));
+          }
+        }
+
+        return {
+          [config.titleOutputProperty]: { type: 'title', title: entry.title },
+          [entry.dateField]: {
+            type: 'date',
+            date: {
+              start: start.toISOString(),
+              end: end?.toISOString(),
+            },
+          },
+          [config.recurrenceInfoProperty]: {
+            type: 'rich_text',
+            rich_text: [{ type: 'text', text: { content: `ID ${entry.id}` } }],
+          },
+          ...entry.extraProperties,
+        };
+      });
   });
 
   log.debug(inspect(taskData, { depth: null }));

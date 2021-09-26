@@ -16,6 +16,7 @@ export interface ScheduleEntry {
   title: RichText[];
   id: string;
   recurrence: string;
+  notOn: string;
   reminder: string;
   time: NotionDate | null;
   dateField: string;
@@ -34,6 +35,11 @@ export const parseScheduleEntry = (
   const recurrence = parseScheduleEntryProp(
     page.properties,
     config.recurrenceProperty,
+    'rich_text',
+  );
+  const notOn = parseScheduleEntryProp(
+    page.properties,
+    config.notOnProperty,
     'rich_text',
   );
   const time = parseScheduleEntryProp(
@@ -70,6 +76,7 @@ export const parseScheduleEntry = (
     id: page.id,
     title: title.title,
     recurrence: richToPlain(recurrence.rich_text),
+    notOn: richToPlain(notOn.rich_text),
     time: time.date,
     reminder: richToPlain(reminder.rich_text),
     dateField: richToPlain(dateField.rich_text),
