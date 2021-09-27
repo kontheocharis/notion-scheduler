@@ -1,6 +1,6 @@
 {
   "name": "notion-scheduler",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Allows the creation of recurring tasks in Notion.",
   "main": "build/index.js",
   "repository": "https://github.com/kontheocharis/notion-scheduler",
@@ -40,5 +40,6 @@
     "yaml": "^1.10.2",
     "yargs": "^17.2.0",
     "zod": "^3.8.2"
-  }
+  },
+  "bin": "./run.js"
 }

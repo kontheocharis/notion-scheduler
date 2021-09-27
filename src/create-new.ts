@@ -13,6 +13,7 @@ import * as dateFns from 'date-fns';
 import { format } from 'date-fns-tz';
 
 const ISO_FMT = "yyyy-MM-dd'T'HH:mmXXX";
+const ISO_FMT_DATE_ONLY = "yyyy-MM-dd";
 
 export const createNewTaskEntries = async (
   notion: NotionClient,
@@ -89,6 +90,8 @@ export const createNewTaskEntries = async (
             }
           }
 
+          const dateFmt = entry.time === null ? ISO_FMT_DATE_ONLY : ISO_FMT;
+
           return {
             properties: {
               [config.titleOutputProperty]: {
@@ -98,11 +101,11 @@ export const createNewTaskEntries = async (
               [entry.dateField]: {
                 type: 'date',
                 date: {
-                  start: format(start, ISO_FMT, { timeZone: config.timeZone }),
+                  start: format(start, dateFmt, { timeZone: config.timeZone }),
                   end:
                     end === null
                       ? undefined
-                      : format(end, ISO_FMT, { timeZone: config.timeZone }),
+                      : format(end, dateFmt, { timeZone: config.timeZone }),
                 },
               },
               [config.recurrenceInfoProperty]: {
