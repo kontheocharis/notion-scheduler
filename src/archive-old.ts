@@ -14,10 +14,18 @@ export const archiveOldTaskEntries = async (
       database_id: config.tasksDatabaseId,
       start_cursor: cursor,
       filter: {
-        property: config.recurrenceInfoProperty,
-        text: {
-          starts_with: 'ID ',
-        },
+        and: [
+          {
+            property: config.recurrenceInfoProperty,
+            text: {
+              starts_with: 'ID ',
+            },
+          },
+          {
+            property: config.doneOutputProperty,
+            checkbox: { equals: false },
+          },
+        ],
       },
     }),
   );

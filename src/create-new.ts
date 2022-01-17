@@ -13,7 +13,7 @@ import * as dateFns from 'date-fns';
 import { format } from 'date-fns-tz';
 
 const ISO_FMT = "yyyy-MM-dd'T'HH:mmXXX";
-const ISO_FMT_DATE_ONLY = "yyyy-MM-dd";
+const ISO_FMT_DATE_ONLY = 'yyyy-MM-dd';
 
 export const createNewTaskEntries = async (
   notion: NotionClient,
