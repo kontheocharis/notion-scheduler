@@ -46,6 +46,9 @@ export const createNewTaskEntries = async (
     }),
   );
 
+  // Get today's date without the time.
+  const startOfToday = combineDateAndTime(new Date(), new Date(0));
+
   const taskData = scheduleEntries.flatMap((entry) => {
     const recurrences = rrulestr(entry.recurrence).all();
     if (recurrences.length === 0) {
@@ -76,10 +79,10 @@ export const createNewTaskEntries = async (
         }
         return true;
       })
-      .map(
+      .flatMap(
         (
           recurrence,
-        ): Pick<PagesCreateParameters, 'properties' | 'children'> => {
+        ): Pick<PagesCreateParameters, 'properties' | 'children'>[] => {
           let start = recurrence;
           let end: Date | null = null;
 
@@ -90,43 +93,52 @@ export const createNewTaskEntries = async (
             }
           }
 
+          // Skip this entry if both dates are before start of today.
+          if (start < startOfToday && (end === null || end < startOfToday)) {
+            return [];
+          }
+
           const dateFmt = entry.time === null ? ISO_FMT_DATE_ONLY : ISO_FMT;
 
-          return {
-            properties: {
-              [config.titleOutputProperty]: {
-                type: 'title',
-                title: entry.title,
-              },
-              [entry.dateField]: {
-                type: 'date',
-                date: {
-                  start: format(start, dateFmt, { timeZone: config.timeZone }),
-                  end:
-                    end === null
-                      ? undefined
-                      : format(end, dateFmt, { timeZone: config.timeZone }),
+          return [
+            {
+              properties: {
+                [config.titleOutputProperty]: {
+                  type: 'title',
+                  title: entry.title,
                 },
+                [entry.dateField]: {
+                  type: 'date',
+                  date: {
+                    start: format(start, dateFmt, {
+                      timeZone: config.timeZone,
+                    }),
+                    end:
+                      end === null
+                        ? undefined
+                        : format(end, dateFmt, { timeZone: config.timeZone }),
+                  },
+                },
+                [config.recurrenceInfoProperty]: {
+                  type: 'rich_text',
+                  rich_text: [
+                    { type: 'text', text: { content: `ID ${entry.id}` } },
+                  ],
+                },
+                [config.doneOutputProperty]: {
+                  type: 'checkbox',
+                  checkbox: expr(() => {
+                    if (end !== null) {
+                      return dateFns.isBefore(end, new Date());
+                    }
+                    return dateFns.isBefore(start, new Date());
+                  }),
+                },
+                ...entry.extraProperties,
               },
-              [config.recurrenceInfoProperty]: {
-                type: 'rich_text',
-                rich_text: [
-                  { type: 'text', text: { content: `ID ${entry.id}` } },
-                ],
-              },
-              [config.doneOutputProperty]: {
-                type: 'checkbox',
-                checkbox: expr(() => {
-                  if (end !== null) {
-                    return dateFns.isBefore(end, new Date());
-                  }
-                  return dateFns.isBefore(start, new Date());
-                }),
-              },
-              ...entry.extraProperties,
+              children: entry.children,
             },
-            children: entry.children,
-          };
+          ];
         },
       );
   });
