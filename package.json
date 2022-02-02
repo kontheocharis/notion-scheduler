@@ -24,7 +24,7 @@
     "build": "tsc",
     "clean": "rm -rf ./build",
     "watch": "tsc -w",
-    "fmt": "prettier -w ./src/**/*.ts",
+    "fmt": "prettier -w './src/**/*.ts'",
     "lint": "eslint src/",
     "tcheck": "tsc --noEmit",
     "dev:build": "tsc-watch --noClear",
